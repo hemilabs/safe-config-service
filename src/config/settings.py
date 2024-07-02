@@ -213,6 +213,8 @@ CGW_SESSION_TIMEOUT_SECONDS = int(os.environ.get("CGW_SESSION_TIMEOUT_SECONDS", 
 MEDIA_ROOT = f"{BASE_DIR}/media/"
 # https://docs.djangoproject.com/en/dev/ref/settings/#media-url
 MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
+# This will override the base URL used to construct the media absolute URLs.
+MEDIA_BASE_URL = os.getenv("MEDIA_BASE_URL", None)
 
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
