@@ -1,11 +1,14 @@
 from abc import abstractmethod
-from typing import Any
+from typing import Any, Optional
 
+from django.core.files.base import File
 from drf_yasg.utils import swagger_serializer_method
 from gnosis.eth.django.serializers import EthereumAddressField
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
 from rest_framework.utils.serializer_helpers import ReturnDict
+
+from config import settings
 
 from .models import Chain, Feature, GasPrice, Wallet
 
@@ -156,11 +159,39 @@ class WalletSerializer(serializers.ModelSerializer[Wallet]):
         return instance.key
 
 
+class CustomImageField(serializers.ImageField):
+    """
+    This class implements a custom serializer for the chain_logo_uri field.
+
+    It is needed because the URIs are stored as relative paths but when
+    serializers.ImageField is called, those are transformed to absolute URLs by
+    picking the host from the request context. When the service is running as
+    part of a docker-compose set, the internal call in between services make the
+    serialized URL look like "http://nginx..." so the UI cannot find the logos.
+    """
+
+    def to_representation(self, value: Optional[File[Any]]) -> Optional[str]:
+        """
+        Overrides the logic that transforms a relative to an absolute URL.
+
+        If MEDIA_BASE_URL is set, it will be used instead of the request
+        context. Otherwise it will fallback to the default behavior.
+        """
+        if not value:
+            return None
+
+        base_url = settings.MEDIA_BASE_URL
+        if base_url and value.name:
+            return base_url.rstrip("/") + "/" + value.name
+
+        return super().to_representation(value)
+
+
 class ChainSerializer(serializers.ModelSerializer[Chain]):
     chain_id = serializers.CharField(source="id")
     chain_name = serializers.CharField(source="name")
     short_name = serializers.CharField()
-    chain_logo_uri = serializers.ImageField(use_url=True)
+    chain_logo_uri = CustomImageField(use_url=True)
     rpc_uri = serializers.SerializerMethodField()
     safe_apps_rpc_uri = serializers.SerializerMethodField()
     public_rpc_uri = serializers.SerializerMethodField()
